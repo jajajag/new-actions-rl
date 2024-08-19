@@ -574,6 +574,9 @@ def get_args(arg_str=None):
     parser.add_argument('--skip-tsne', action='store_true', default=False)
     parser.add_argument('--num-distributions', type=int, default=400)
     parser.add_argument('--plot-samples', type=int, default=300)
+    # JAG: Arguments for mixup
+    parser.add_argument('--mixup_alpha', type=float, default=0)
+    parser.add_argument('--mixup_var', type=str, default='rate_logvar')
 
     # htvae specific
     parser.add_argument('--n-hidden-option', type=int, default=3,
