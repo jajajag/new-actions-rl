@@ -536,32 +536,50 @@ class Embedder():
             emb_mem.add_embedding(option_embs[i], opt)
             emb_mem.add_emb_logvar(option_emb_logvars[i], opt)
 
-        alpha = 0.2
         # JAG: Sample mixup rates from a beta distribution
-        beta_distribution = Beta(alpha, alpha)
+        if not self.args.mixup_rate:
+            print('*'*100)
+            return
+        beta_distribution = Beta(self.args.alpha, self.args.alpha)
         # Create the index for permuting the embeddings
         indices = torch.randperm(len(use_opt_ids))
         # Sample mixup rates
         mixup_rates = beta_distribution.sample((len(use_opt_ids),))
-        # JAG: Mixup the embeddings
+        # Mixup the embeddings
         mixed_option_embs = (mixup_rates.view(-1, 1) * option_embs +
                      (1 - mixup_rates).view(-1, 1) * option_embs[indices])
-        #mixed_option_emb_logvars = (mixup_rates.view(-1, 1) \
-        #        * option_emb_logvars + (1 - mixup_rates).view(-1, 1) \
-        #        * option_emb_logvars[indices])
-        # 
-        # JAG: Mixup the log variances
-        # Convert log variances to variances
-        var_option_embs = torch.exp(log_var_option_embs)
-        var_option_embs_indices = torch.exp(log_var_option_embs[indices])
+         
+        # Mixup the log variances
+        # 2. Mixup of the variances
+        if self.args.mixup_var == 'rate_var':
+            # Convert log variances to variances
+            var_option_embs = torch.exp(log_var_option_embs)
+            var_option_embs_indices = torch.exp(log_var_option_embs[indices])
+            # Mix variances
+            mixed_var = (mixup_rates.view(-1, 1) * var_option_embs \
+                    + (1 - mixup_rates).view(-1, 1) * var_option_embs_indices)
+            # Convert mixed variances back to log variances
+            mixed_option_emb_logvars = torch.log(mixed_var)
+        # 2. Mixup of the square of the variances
+        elif self.args.mixup_var == 'rate_square_var':
+            # Convert log variances to variances
+            var_option_embs = torch.exp(log_var_option_embs)
+            var_option_embs_indices = torch.exp(log_var_option_embs[indices])
+            # Calculate squared mixup rates
+            squared_mixup_rates = mixup_rates.view(-1, 1) ** 2
+            squared_one_minus_mixup_rates = (1 - mixup_rates).view(-1, 1) ** 2
+            # Mix variances using squared rates
+            mixed_var = (squared_mixup_rates * var_option_embs + \
+                    squared_one_minus_mixup_rates * var_option_embs_indices)
+            # Convert mixed variances back to log variances
+            mixed_option_emb_logvars = torch.log(mixed_var)
+        # 3. Direct mixup of the logvars (rate_logvar)
+        else:
+            mixed_option_emb_logvars = (mixup_rates.view(-1, 1) \
+                    * option_emb_logvars + (1 - mixup_rates).view(-1, 1) \
+                    * option_emb_logvars[indices])
 
-        # Mix variances
-        mixed_var = (mixup_rates.view(-1, 1) * var_option_embs +
-             (1 - mixup_rates).view(-1, 1) * var_option_embs_indices)
-
-# Convert mixed variances back to log variances
-mixed_log_var = torch.log(mixed_var)
-
+        # Store mixed embeddings
         for (i, opt) in enumerate(use_opt_ids):
             # Get the option ID that should be used as input to the environment
             if remap_options is not None:
