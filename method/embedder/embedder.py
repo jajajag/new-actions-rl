@@ -558,8 +558,10 @@ class Embedder():
         # 2. Mixup of the variances
         elif self.args.mixup_var == 'rate_var':
             # Convert log variances to variances
-            var_option_embs = torch.exp(option_emb_logvars)
-            var_option_embs_indices = torch.exp(option_emb_logvars[indices])
+            option_emb_logvars_tensor = torch.from_numpy(option_emb_logvars)
+            var_option_embs = torch.exp(option_emb_logvars_tensor)
+            var_option_embs_indices = torch.exp(
+                    option_emb_logvars_tensor[indices])
             # Mix variances
             mixed_var = (mixup_rates.view(-1, 1) * var_option_embs \
                     + (1 - mixup_rates).view(-1, 1) * var_option_embs_indices)
@@ -568,8 +570,10 @@ class Embedder():
         # 3. Mixup of the square of the variances
         elif self.args.mixup_var == 'rate_square_var':
             # Convert log variances to variances
-            var_option_embs = torch.exp(option_emb_logvars)
-            var_option_embs_indices = torch.exp(option_emb_logvars[indices])
+            option_emb_logvars = torch.from_numpy(option_emb_logvars)
+            var_option_embs = torch.exp(option_emb_logvars_tensor)
+            var_option_embs_indices = torch.exp(
+                    option_emb_logvars_tensor[indices])
             # Calculate squared mixup rates
             squared_mixup_rates = mixup_rates.view(-1, 1) ** 2
             squared_one_minus_mixup_rates = (1 - mixup_rates).view(-1, 1) ** 2
