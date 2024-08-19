@@ -7,6 +7,7 @@ from method.embedder.tvae import TVAE
 from method.embedder.htvae import HTVAE
 from rlf.rl.envs import make_vec_envs
 from gym.spaces import Discrete
+from torch.distributions import Beta
 import matplotlib as mpl
 import imageio
 from tqdm import tqdm
@@ -534,6 +535,41 @@ class Embedder():
                 opt = remap_options[opt]
             emb_mem.add_embedding(option_embs[i], opt)
             emb_mem.add_emb_logvar(option_emb_logvars[i], opt)
+
+        alpha = 0.2
+        # JAG: Sample mixup rates from a beta distribution
+        beta_distribution = Beta(alpha, alpha)
+        # Create the index for permuting the embeddings
+        indices = torch.randperm(len(use_opt_ids))
+        # Sample mixup rates
+        mixup_rates = beta_distribution.sample((len(use_opt_ids),))
+        # JAG: Mixup the embeddings
+        mixed_option_embs = (mixup_rates.view(-1, 1) * option_embs +
+                     (1 - mixup_rates).view(-1, 1) * option_embs[indices])
+        #mixed_option_emb_logvars = (mixup_rates.view(-1, 1) \
+        #        * option_emb_logvars + (1 - mixup_rates).view(-1, 1) \
+        #        * option_emb_logvars[indices])
+        # 
+        # JAG: Mixup the log variances
+        # Convert log variances to variances
+        var_option_embs = torch.exp(log_var_option_embs)
+        var_option_embs_indices = torch.exp(log_var_option_embs[indices])
+
+        # Mix variances
+        mixed_var = (mixup_rates.view(-1, 1) * var_option_embs +
+             (1 - mixup_rates).view(-1, 1) * var_option_embs_indices)
+
+# Convert mixed variances back to log variances
+mixed_log_var = torch.log(mixed_var)
+
+        for (i, opt) in enumerate(use_opt_ids):
+            # Get the option ID that should be used as input to the environment
+            if remap_options is not None:
+                if opt not in remap_options:
+                    continue
+                opt = remap_options[opt]
+            emb_mem.add_embedding(mixed_option_embs[i], opt)
+            emb_mem.add_emb_logvar(mixed_option_emb_logvars[i], opt)
 
     def eval_dists_from_ids(self, dist_mem, remap_options=None,
                             n_distributions=1, load_all=False):
