@@ -550,12 +550,12 @@ class Embedder():
                      (1 - mixup_rates).view(-1, 1) * option_embs[indices])
          
         # Mixup the log variances
-        # 1. Direct mixup of the logvars (rate_logvar)
+        # 1. Direct mixup of the logvars
         if self.args.mixup_var == 'rate_logvar':
             mixed_option_emb_logvars = (mixup_rates.view(-1, 1) \
                     * option_emb_logvars + (1 - mixup_rates).view(-1, 1) \
                     * option_emb_logvars[indices])
-        # 2. Mixup of the variances
+        # 2. Mixup of the variances (DEFAULT)
         elif self.args.mixup_var == 'rate_var':
             # Convert log variances to variances
             option_emb_logvars_tensor = torch.from_numpy(option_emb_logvars)

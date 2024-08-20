@@ -576,7 +576,7 @@ def get_args(arg_str=None):
     parser.add_argument('--plot-samples', type=int, default=300)
     # JAG: Arguments for mixup
     parser.add_argument('--mixup_alpha', type=float, default=0)
-    parser.add_argument('--mixup_var', type=str, default='rate_logvar')
+    parser.add_argument('--mixup_var', type=str, default='rate_var')
 
     # htvae specific
     parser.add_argument('--n-hidden-option', type=int, default=3,
