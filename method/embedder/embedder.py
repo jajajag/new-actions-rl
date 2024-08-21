@@ -555,7 +555,7 @@ class Embedder():
             mixed_option_emb_logvars = (mixup_rates.view(-1, 1) \
                     * option_emb_logvars + (1 - mixup_rates).view(-1, 1) \
                     * option_emb_logvars[indices])
-        # 2. Mixup of the variances (DEFAULT)
+        # 2. Mixup of the variances
         elif self.args.mixup_var == 'rate_var':
             # Convert log variances to variances
             option_emb_logvars_tensor = torch.from_numpy(option_emb_logvars)
@@ -582,7 +582,29 @@ class Embedder():
                     squared_one_minus_mixup_rates * var_option_embs_indices)
             # Convert mixed variances back to log variances
             mixed_option_emb_logvars = torch.log(mixed_var)
-        # 4. Please specify a valid mixup_var option
+        # 4. Mixup of the gaussian distribution
+        elif self.args.mixup_var == 'rate_gaussian':
+            # Convert log variances to variances
+            option_emb_logvars_tensor = torch.from_numpy(option_emb_logvars)
+            var_option_embs = torch.exp(option_emb_logvars_tensor)
+            var_option_embs_indices = torch.exp(
+                    option_emb_logvars_tensor[indices])
+
+            # Mix variances using original mixup rates
+            mixed_var = (mixup_rates.view(-1, 1) * var_option_embs \
+                    + (1 - mixup_rates).view(-1, 1) * var_option_embs_indices)
+
+            # Calculate the difference in means (embeddings)
+            emb_diff = option_embs - option_embs[indices]
+            # Calculate the additional variance term: p(1-p) * (mu1 - mu2)^2
+            additional_variance_term = mixup_rates.view(-1, 1) \
+                    * (1 - mixup_rates).view(-1, 1) * (emb_diff ** 2)
+            # Add the additional variance term to the mixed variances
+            mixed_var += additional_variance_term
+
+            # Convert mixed variances back to log variances
+            mixed_option_emb_logvars = torch.log(mixed_var)
+        # 5. Please specify a valid mixup_var option
         else:
             exit('Please specify a valid mixup_var option ' \
                     + '(rate_logvar, rate_var, rate_square_var)')
