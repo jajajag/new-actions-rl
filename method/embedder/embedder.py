@@ -545,6 +545,8 @@ class Embedder():
         indices = torch.randperm(len(use_opt_ids))
         # Sample mixup rates
         mixup_rates = beta_distribution.sample((len(use_opt_ids),))
+        # Ensure mixup rates are always > 0.5
+        mixup_rates = torch.maximum(mixup_rates, 1 - mixup_rates)
         # Mixup the embeddings
         mixed_option_embs = (mixup_rates.view(-1, 1) * option_embs +
                      (1 - mixup_rates).view(-1, 1) * option_embs[indices])
